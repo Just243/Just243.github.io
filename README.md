@@ -1,2 +1,4 @@
 # personalProjectGame
 game
+
+help pls
