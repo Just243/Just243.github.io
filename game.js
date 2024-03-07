@@ -12,6 +12,7 @@ slimeTileset = new Image(),
 slimeBallTileset = new Image(),
 fungantTileset = new Image(), 
 fungiantTileset = new Image(),
+devilTileset = new Image(),
 cacodaemonTileset = new Image();
 
 //font & UI's, in a slightly different format that's slightly worse
@@ -28,6 +29,7 @@ slimeTileset.src = "assets/enemies/slime.png";
 slimeBallTileset.src = "assets/enemies/slimeball.png";
 fungantTileset.src = "assets/enemies/fungant.png";
 fungiantTileset.src = "assets/enemies/fungiant.png";
+devilTileset.src = "assets/enemies/devil.png";
 cacodaemonTileset.src = "assets/enemies/cacodaemon.png";
 
 //load fonts & UI
@@ -114,12 +116,21 @@ const tiles = Array(sizX*sizY);
 
 //enemies
 const enemies = [];
-const spawnChance = [ // IF IT WORKS IT WORKS OK STFU
-    "skeleton", "skeleton", "skeleton", "skeleton", "skeleton", 
-    "ghost", "ghost", "ghost", "ghost", "ghost",
-    "slime", "slime",
-    "fungiant"
-]; 
+const spawnList = [
+    [{type:"skeleton", count:6}, {type:"ghost", count:4}, {type:"slime", count:3}], 
+    [{type:"skeleton", count:4}, {type:"slime", count:6}, {type:"fungiant", count:3}], 
+    [{type:"skeleton", count:2}, {type:"slime", count:2}, {type:"fungiant", count:3}], 
+    [{type:"skeleton", count:1}, {type:"slime", count:4}, {type:"fungiant", count:2}], 
+    [{type:"skeleton", count:2}, {type:"ghost", count:2}, {type:"slime", count:2}, {type:"devil", count:1}], 
+    [{type:"skeleton", count:1}, {type:"slime", count:2}, {type:"fungiant", count:2}, {type:"devil", count:4}], 
+    [{type:"slime", count:1}, {type:"fungiant", count:2}, {type:"devil", count:3}], 
+    [{type:"devil", count:4}, {type:"ghost", count:2}],
+    [{type:"skeleton", count:4}],
+    [{type:"devil", count:8}]
+];
+let spawnPhase = -1;
+const spawnBucket =[];
+let spawnDelay = 100;
 
 //player variables
 var maxHealth = 25;
@@ -143,15 +154,15 @@ ferocity = 0, absorption = 0, vampChance = 0;
 const upgrades = [
     {name:"Poisoning Blade"}, //not used
     {name:"Thunderous Blade"}, //not used
-    {name:"Sweeping Grace", text:["Increases attack range by ", " tiles"], statMin:0.5, statMax:1.5, digitMult:10},
-    {name:"Slicing Grace", text:["Decreases attack delay by "], statMin:1, statMax:2, digitMult:1},
-    {name:"Powerful Punch", text:["Increases attack damage by "], statMin:0.5, statMax:3, digitMult:10},
-    {name:"Ferocious Bite", text:["Increases double-hit chance by "], statMin:0.05, statMax:0.3, digitMult:100},
+    {name:"Sweeping Grace", text:["Increases attack range by ", "x"], statMin:0.3, statMax:1, digitMult:100},
+    {name:"Slicing Grace", text:["Decreases attack delay by ", " ticks"], statMin:1, statMax:2, digitMult:1},
+    {name:"Powerful Punch", text:["Increases attack damage by "], statMin:0.5, statMax:4, digitMult:10},
+    {name:"Ferocious Bite", text:["Increases double-hit chance by ", "x"], statMin:0.1, statMax:0.3, digitMult:1000},
     {name:"Growth", text:["Increases max health by ", " health"], statMin:3, statMax:8, digitMult:1},
-    {name:"Shielding", text:["Grants an absorption shield worth ", " health"], statMin:2, statMax:6, digitMult:1},
-    {name:"Overheal", text:["Regenerate ", " health"], statMin:2, statMax:6, digitMult:1},
-    {name:"Swift Feet", text:["Increases movement speed by "], statMin:0.01, statMax:0.04, digitMult:1000},
-    {name:"Vampirism", text:["Increases a chance to regenerate 1 health by "], statMin:0.05, statMax:0.3, digitMult:100}
+    {name:"Shielding", text:["Grants an absorption shield worth ", " health"], statMin:5, statMax:9, digitMult:1},
+    {name:"Overheal", text:["Regenerate ", " health (overflow will become absorption)"], statMin:3, statMax:7, digitMult:1},
+    {name:"Swift Feet", text:["Increases movement speed by ", " tiles-per-tick"], statMin:0.015, statMax:0.05, digitMult:1000},
+    {name:"Vampirism", text:["Increases a chance to regenerate 1 health by ", "x"], statMin:0.05, statMax:0.25, digitMult:1000}
 ];
 
 //world gen functions
@@ -313,6 +324,8 @@ function addEnemy(x, y, type){
         case "fungant":
             enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:1, damage:1, attackCd:0, attackSpeed:20, xp:0, col:true, drag:0.95 });
             break;
+        case "devil":
+            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:12, damage:6, attackCd:0, attackSpeed:20, xp:8, col:true, drag:0.9 });
         default: break;
     }
 }
@@ -390,9 +403,27 @@ function draw(e) {
     //constants for screenspace - worldspace conversion
     const ax = ScrX+dx/sizP, ay = ScrY+dy/sizP;
 
+    console.log(spawnBucket);
     //enemy spawning
-    if(Math.random()>0.995){
-        let type = spawnChance[Math.floor(Math.random()*spawnChance.length)]; //weighted selection
+    if(spawnDelay < 0){
+        spawnDelay = Math.floor(Math.random()*60+(30000/(dt+1))+30);
+
+        if(spawnBucket.length == 0){
+            spawnDelay = 1800;
+            spawnPhase++;
+            for(const element of spawnList[Math.min(spawnPhase, spawnList.length-1)]){
+                for(let i = 0; i < element.count; i++){
+                    spawnBucket.push(element.type);
+                }
+            }
+        }
+
+        //weighted selection from the spawn bucket
+        let i = Math.floor(Math.random()*spawnBucket.length);
+        let type = spawnBucket[i];
+        spawnBucket[i] = spawnBucket[spawnBucket.length-1];
+        spawnBucket.pop();
+
         for(let spawnCount = Math.ceil(Math.random()*4); spawnCount > 0; spawnCount--){
             for(let attempts = 0; attempts < 10; attempts++){ //10 attempts to spawn
                 let randDir = Math.random()*Math.PI*2;
@@ -434,7 +465,7 @@ function draw(e) {
                 }
                 let dist = Math.sqrt(distX*distX+distY*distY);
 
-                if(enemies[i].type == "fungiant" || enemies[i].type == "fungiant"){
+                if(enemies[i].type == "fungiant" || enemies[a].type == "fungiant" || enemies[i].type == "devil" || enemies[a].type == "devil"){
                     if(dist < 1 && dist > 0.05){
                         enemies[i].x += (distX/dist)*(1-dist)*0.5;
                         enemies[i].y += (distY/dist)*(1-dist)*0.5;
@@ -488,6 +519,8 @@ function draw(e) {
                     case "fungant":
                         ctx.drawImage(fungantTileset, (Math.floor(enemies[i].deathT/12)%4+enemies[i].dir*4)*24, 144, 24, 24, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.5), Math.floor(sizP*1.5));
                         break;
+                    case "devil":
+                        ctx.drawImage(devilTileset, (Math.floor(enemies[i].deathT/12)%4+enemies[i].dir*4)*28, 140, 28, 28, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.75), Math.floor(sizP*1.75));
                     default: break;
                 }
                 continue;
@@ -531,6 +564,8 @@ function draw(e) {
                     case "fungant":
                         ctx.drawImage(fungantTileset, (Math.floor(enemies[i].hurtT/6)%4+enemies[i].dir*4)*24, 120, 24, 24, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.5), Math.floor(sizP*1.5));
                         break;
+                    case "devil":
+                        ctx.drawImage(devilTileset, (Math.floor(enemies[i].hurtT/6)%4+enemies[i].dir*4)*28, 112, 28, 28, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.75), Math.floor(sizP*1.75))
                     default: break;
                 }
                 continue;
@@ -543,8 +578,8 @@ function draw(e) {
                         ctx.drawImage(ghostTileset, Math.floor(4-enemies[i].st/15)*24, 0, 24, 24, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.5), Math.floor(sizP*1.5));
                         enemies[i].st--;
                     } else {
+                        enemies[i].dir = distX < 0;
                         if(dist > 0.6){
-                            enemies[i].dir = distX < 0;
                             enemies[i].x += (distX/dist)*0.04;
                             enemies[i].y += (distY/dist)*0.04;
                         } else if(enemies[i].attackCd < 0){
@@ -561,8 +596,8 @@ function draw(e) {
                         ctx.drawImage(skeletonTileset, Math.floor(4-enemies[i].st/15)*24, 0, 24, 24, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.5), Math.floor(sizP*1.5));
                         enemies[i].st--;
                     } else{
+                        enemies[i].dir = distX < 0;
                         if(dist > 0.6){
-                            enemies[i].dir = distX < 0;
                             enemies[i].x += (distX/dist)*0.06;
                             enemies[i].y += (distY/dist)*0.06;
                         } else if(enemies[i].attackCd < 0){
@@ -584,8 +619,8 @@ function draw(e) {
                         ctx.drawImage(slimeTileset, Math.floor(4-enemies[i].st/15)*24, 0, 24, 24, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.5), Math.floor(sizP*1.5));
                         enemies[i].st--;
                     } else{
+                        enemies[i].dir = distX < 0;
                         if(dist > 0.6){
-                            enemies[i].dir = distX < 0;
                             if(dist > 6){
                                 enemies[i].x += (distX/dist)*0.03;
                                 enemies[i].y += (distY/dist)*0.03;
@@ -615,8 +650,8 @@ function draw(e) {
                         ctx.drawImage(slimeBallTileset, Math.floor(4-enemies[i].st/15)*24, 0, 24, 24, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.5), Math.floor(sizP*1.5));
                         enemies[i].st--;
                     } else{
+                        enemies[i].dir = distX < 0;
                         if(dist > 0.6){
-                            enemies[i].dir = distX < 0;
                             if(dist > 2){
                                 enemies[i].x += (distX/dist)*0.06;
                                 enemies[i].y += (distY/dist)*0.06;
@@ -643,8 +678,8 @@ function draw(e) {
                         ctx.drawImage(fungiantTileset, Math.floor(4-enemies[i].st/15)*28, 0, 28, 28, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.75), Math.floor(sizP*1.75));
                         enemies[i].st--;
                     } else{
+                        enemies[i].dir = distX < 0;
                         if(dist > 0.6){
-                            enemies[i].dir = distX < 0;
                             if(dist > 7){
                                 enemies[i].x += (distX/dist)*0.02;
                                 enemies[i].y += (distY/dist)*0.02;
@@ -675,7 +710,7 @@ function draw(e) {
                             enemies[i].x += (distX/dist)*0.08;
                             enemies[i].y += (distY/dist)*0.08;
                         } else {
-
+                            //explode
                         }
 
                         checkEnemyTile(enemies[i], Math.floor(enemies[i].x-ax+0.5), Math.floor(enemies[i].y-ay+0.5), enemies[i].x-ax, enemies[i].y-ay);
@@ -684,6 +719,34 @@ function draw(e) {
                         checkEnemyTile(enemies[i], Math.floor(enemies[i].x-ax-0.5), Math.floor(enemies[i].y-ay-0.5), enemies[i].x-ax, enemies[i].y-ay);
 
                         ctx.drawImage(fungantTileset, (Math.floor(dt/6)%4+enemies[i].dir*4)*24, 48, 24, 24, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.5), Math.floor(sizP*1.5));
+                    }
+                    break;
+                case "devil":
+                    if(enemies[i].st > 0){
+                        ctx.drawImage(devilTileset, Math.floor(4-enemies[i].st/15)*28, 0, 28, 28, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.75), Math.floor(sizP*1.75));
+                        enemies[i].st--;
+                    } else{
+                        enemies[i].dir = distX < 0;
+                        if(dist > 3){
+                            enemies[i].x += (distX/dist)*0.03;
+                            enemies[i].y += (distY/dist)*0.03;
+                        } else {
+                            if(dist < 0.8){
+                                if(hurtTime < 0 || enemies[i].damage > hurtDamage){
+                                    plsDoDamage(i, 0.4, distX, distY, dist);
+                                }
+                            } else {
+                                enemies[i].x += (distX/dist)*0.12;
+                                enemies[i].y += (distY/dist)*0.12;
+                            }
+                        }
+
+                        checkEnemyTile(enemies[i], Math.floor(enemies[i].x-ax+0.5), Math.floor(enemies[i].y-ay+0.5), enemies[i].x-ax, enemies[i].y-ay);
+                        checkEnemyTile(enemies[i], Math.floor(enemies[i].x-ax+0.5), Math.floor(enemies[i].y-ay-0.5), enemies[i].x-ax, enemies[i].y-ay);
+                        checkEnemyTile(enemies[i], Math.floor(enemies[i].x-ax-0.5), Math.floor(enemies[i].y-ay+0.5), enemies[i].x-ax, enemies[i].y-ay);
+                        checkEnemyTile(enemies[i], Math.floor(enemies[i].x-ax-0.5), Math.floor(enemies[i].y-ay-0.5), enemies[i].x-ax, enemies[i].y-ay);
+
+                        ctx.drawImage(devilTileset, (Math.floor(dt/6)%4+enemies[i].dir*4)*28, 28, 28, 28, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.75), Math.floor(sizP*1.75));
                     }
                     break;
                 default: break;
@@ -853,6 +916,7 @@ function draw(e) {
     dt++;
     hurtTime--;
     swordCooldown--;
+    spawnDelay--;
 
     //absolutely scuffed as hell camera shake
     ScrX -= CamShakeX;
@@ -964,6 +1028,10 @@ function draw(e) {
                                             break;
                                         case 8: 
                                             playerHP += UI.meta[id].Val;
+                                            if(playerHP > maxHealth){
+                                                absorption+=playerHP-maxHealth;
+                                                playerHP = maxHealth;
+                                            }
                                             break;
                                         case 9: 
                                             movementSpeed += UI.meta[id].Val;
