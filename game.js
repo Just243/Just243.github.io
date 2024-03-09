@@ -51,7 +51,6 @@ ctx.canvas.height = window.innerHeight;
 ctx.imageSmoothingEnabled = false;
 ctx.textBaseline = "top";
 
-
 //event listeners
 document.addEventListener("keydown", (e) => {
     switch (e.key){
@@ -131,6 +130,10 @@ const spawnList = [
 let spawnPhase = -1;
 const spawnBucket =[];
 let spawnDelay = 100;
+
+//boss
+const boss = { hp:150, damage:10, atkSpeed:30, atkCooldown:0, x:100, y:100, vx:0, vy:0, hx:0, hy:0, dashCooldown:0, state:"idle", aniT:0, dir:1};
+let bossActive = false;
 
 //player variables
 var maxHealth = 25;
@@ -325,26 +328,28 @@ function addEnemy(x, y, type){
             enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:1, damage:1, attackCd:0, attackSpeed:20, xp:0, col:true, drag:0.95 });
             break;
         case "devil":
-            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:12, damage:6, attackCd:0, attackSpeed:20, xp:8, col:true, drag:0.9 });
+            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:12, damage:6, attackCd:0, attackSpeed:20, xp:16, col:true, drag:0.9 });
         default: break;
     }
 }
 function plsDoDamage(i, k, distX, distY, dist){
-    CamShakeX += (Math.random()-0.5)*2;
-    CamShakeY += (Math.random()-0.5)*2;
+    if(hurtTime < 0 || enemies[i].damage > hurtDamage){
+        CamShakeX += (Math.random()-0.5)*2;
+        CamShakeY += (Math.random()-0.5)*2;
 
-    if(absorption > 0){
-        absorption -= enemies[i].damage;
-        playerHP += Math.min(absorption, 0);
-    } else {
-        playerHP -= enemies[i].damage;
+        if(absorption > 0){
+            absorption -= enemies[i].damage;
+            playerHP += Math.min(absorption, 0);
+        } else {
+            playerHP -= enemies[i].damage;
+        }
+        
+        enemies[i].attackCd = enemies[i].attackSpeed;
+        hurtDamage = enemies[i].damage;
+        hurtTime = 24;
+        knockX = k*distX/dist;                                    
+        knockY = k*distY/dist;
     }
-    
-    enemies[i].attackCd = enemies[i].attackSpeed;
-    hurtDamage = enemies[i].damage;
-    hurtTime = 24;
-    knockX = (distX/dist)*Math.sqrt(enemies[i].damage)*k;                                    
-    knockY = (distY/dist)*Math.sqrt(enemies[i].damage)*k;
 }
 function length(a, b){
     return Math.sqrt(a*a+b*b);
@@ -403,7 +408,6 @@ function draw(e) {
     //constants for screenspace - worldspace conversion
     const ax = ScrX+dx/sizP, ay = ScrY+dy/sizP;
 
-    console.log(spawnBucket);
     //enemy spawning
     if(spawnDelay < 0){
         spawnDelay = Math.floor(Math.random()*60+(30000/(dt+1))+30);
@@ -437,6 +441,16 @@ function draw(e) {
                     }
                 }
             }
+        }
+    }
+
+    //boss spawning
+    if(!bossActive){
+        if(spawnPhase > spawnPhase.list && Math.random() > 0.99){
+            let angle = Math.random() * pi2;
+            boss.x = playerX + Math.sin(angle)*Math.max(ctx.canvas.width, ctx.canvas.height);
+            boss.y = playerY + Math.cos(angle)*Math.max(ctx.canvas.width, ctx.canvas.height);
+            bossActive = true;
         }
     }
 
@@ -583,9 +597,7 @@ function draw(e) {
                             enemies[i].x += (distX/dist)*0.04;
                             enemies[i].y += (distY/dist)*0.04;
                         } else if(enemies[i].attackCd < 0){
-                            if(hurtTime < 0 || enemies[i].damage > hurtDamage){
-                                plsDoDamage(i, 0.2, distX, distY, dist);
-                            }
+                            plsDoDamage(i, 0.2, distX, distY, dist);
                         }
 
                         ctx.drawImage(ghostTileset, (Math.floor(dt/6)%4+enemies[i].dir*4)*24, 24, 24, 24, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.5), Math.floor(sizP*1.5));
@@ -601,9 +613,7 @@ function draw(e) {
                             enemies[i].x += (distX/dist)*0.06;
                             enemies[i].y += (distY/dist)*0.06;
                         } else if(enemies[i].attackCd < 0){
-                            if(hurtTime < 0 || enemies[i].damage > hurtDamage){
-                                plsDoDamage(i, 0.2, distX, distY, dist);
-                            }
+                            plsDoDamage(i, 0.2, distX, distY, dist);
                         }
 
                         checkEnemyTile(enemies[i], Math.floor(enemies[i].x-ax+0.5), Math.floor(enemies[i].y-ay+0.5), enemies[i].x-ax, enemies[i].y-ay);
@@ -632,9 +642,7 @@ function draw(e) {
                                 }
                             }
                         } else if(enemies[i].attackCd < 0){
-                            if(hurtTime < 0 || enemies[i].damage > hurtDamage){
-                                plsDoDamage(i, 0.2, distX, distY, dist);
-                            }
+                            plsDoDamage(i, 0.4, distX, distY, dist);
                         }
 
                         checkEnemyTile(enemies[i], Math.floor(enemies[i].x-ax+0.5), Math.floor(enemies[i].y-ay+0.5), enemies[i].x-ax, enemies[i].y-ay);
@@ -656,13 +664,11 @@ function draw(e) {
                                 enemies[i].x += (distX/dist)*0.06;
                                 enemies[i].y += (distY/dist)*0.06;
                             } else {
-                                enemies[i].x += (distX/dist)*0.03;
-                                enemies[i].y += (distY/dist)*0.03;
+                                enemies[i].x += (distX/dist)*0.04;
+                                enemies[i].y += (distY/dist)*0.04;
                             }
                         } else if(enemies[i].attackCd < 0){
-                            if(hurtTime < 0 || enemies[i].damage > hurtDamage){
-                                plsDoDamage(i, 0.2, distX, distY, dist);
-                            }
+                            plsDoDamage(i, 0.15, distX, distY, dist);
                         }
 
                         checkEnemyTile(enemies[i], Math.floor(enemies[i].x-ax+0.5), Math.floor(enemies[i].y-ay+0.5), enemies[i].x-ax, enemies[i].y-ay);
@@ -675,7 +681,7 @@ function draw(e) {
                     break;
                 case "fungiant":
                     if(enemies[i].st > 0){
-                        ctx.drawImage(fungiantTileset, Math.floor(4-enemies[i].st/15)*28, 0, 28, 28, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.75), Math.floor(sizP*1.75));
+                        ctx.drawImage(fungiantTileset, Math.floor(4-enemies[i].st/15)*28, 0, 28, 28, Math.floor((enemies[i].x-ScrX-0.875)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.75), Math.floor(sizP*1.75));
                         enemies[i].st--;
                     } else{
                         enemies[i].dir = distX < 0;
@@ -723,7 +729,7 @@ function draw(e) {
                     break;
                 case "devil":
                     if(enemies[i].st > 0){
-                        ctx.drawImage(devilTileset, Math.floor(4-enemies[i].st/15)*28, 0, 28, 28, Math.floor((enemies[i].x-ScrX-0.75)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.75), Math.floor(sizP*1.75));
+                        ctx.drawImage(devilTileset, Math.floor(4-enemies[i].st/15)*28, 0, 28, 28, Math.floor((enemies[i].x-ScrX-0.875)*sizP), Math.floor((enemies[i].y-ScrY-1.25)*sizP), Math.floor(sizP*1.75), Math.floor(sizP*1.75));
                         enemies[i].st--;
                     } else{
                         enemies[i].dir = distX < 0;
@@ -732,9 +738,7 @@ function draw(e) {
                             enemies[i].y += (distY/dist)*0.03;
                         } else {
                             if(dist < 0.8){
-                                if(hurtTime < 0 || enemies[i].damage > hurtDamage){
-                                    plsDoDamage(i, 0.4, distX, distY, dist);
-                                }
+                                plsDoDamage(i, 0.4, distX, distY, dist);
                             } else {
                                 enemies[i].x += (distX/dist)*0.12;
                                 enemies[i].y += (distY/dist)*0.12;
@@ -763,7 +767,86 @@ function draw(e) {
         }
     }
 
-    //ctx.drawImage(cacodaemonTileset, 0, 0, 64, 64, Math.floor((90-ScrX-0.75)*sizP), Math.floor((90-ScrY-1.25)*sizP), sizP*4, sizP*4);
+    if(bossActive){
+        let dx = boss.x-playerX;
+        let dy = boss.y-playerY;
+        let d = Math.sqrt(dx*dx+dy*dy);
+        switch(boss.state){
+            case "idle":
+                boss.dashCooldown--;
+                boss.dir = dx > 0;
+                boss.x -= 0.04*dx/d;
+                boss.y -= 0.04*dy/d;
+                if(boss.dashCooldown == 20){
+                    //calc stuff
+                    boss.vx = (dx+Math.sign(dx)*4)*Math.log10(0.96)/Math.LOG10E;
+                    boss.vy = (dy+Math.sign(dy)*4)*Math.log10(0.96)/Math.LOG10E;
+                }
+                if((boss.dashCooldown < 0 && Math.random() > 0.95) || boss.dashCooldown < -30){
+                    boss.state = "dash";
+                    boss.dashCooldown = 300;
+                }
+                break;
+            case "dash":
+                boss.x += boss.vx *= 0.96;
+                boss.y += boss.vy *= 0.96;
+                if(Math.abs(boss.vx) + Math.abs(boss.vy) < 0.05 && Math.random() > 0.9){
+                    boss.state = "idle";
+                }
+                break;
+            case "burp":
+                break;
+            case "death":
+                break;
+            default: break;
+        }
+
+        boss.atkCooldown--;
+        if(d < 2 && boss.atkCooldown < 0){
+            CamShakeX += (Math.random()-0.5)*3;
+            CamShakeY += (Math.random()-0.5)*3;
+        
+            if(absorption > 0){
+                absorption -= boss.damage;
+                playerHP += Math.min(absorption, 0);
+            } else {
+                playerHP -= boss.damage;
+            }
+            
+            boss.atkCooldown = boss.atkSpeed;
+            hurtDamage = boss.damage;
+            hurtTime = 24;
+            knockX = -0.4*dx/d;                                    
+            knockY = -0.4*dy/d;
+        }
+
+        boss.hx *= -0.9;
+        boss.hy *= -0.9;
+        switch(boss.state){
+            case "idle":
+                if(boss.dashCooldown < 20){
+                    ctx.drawImage(cacodaemonTileset, (Math.floor(boss.aniT/6)%6)*64, boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2+(Math.random()-0.5)*0.2)*sizP), Math.floor((boss.y-ScrY-2+(Math.random()-0.5)*0.2)*sizP), sizP*4, sizP*4);
+                } else {
+                    ctx.drawImage(cacodaemonTileset, (Math.floor(boss.aniT/10)%6)*64, boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2+boss.hx)*sizP), Math.floor((boss.y-ScrY-2+boss.hy)*sizP), sizP*4, sizP*4);
+                }
+                break;
+            case "dash":
+                ctx.drawImage(cacodaemonTileset, (boss.aniT%6)*64, 64+boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2)*sizP), Math.floor((boss.y-ScrY-2)*sizP), sizP*4, sizP*4);
+                break;
+            case "burp":
+                ctx.drawImage(cacodaemonTileset, (boss.aniT%4)*64, 128+boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2)*sizP), Math.floor((boss.y-ScrY-2)*sizP), sizP*4, sizP*4);
+                break;
+            case "death":
+                ctx.drawImage(cacodaemonTileset, (boss.aniT%8)*64, 192+boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2)*sizP), Math.floor((boss.y-ScrY-2)*sizP), sizP*4, sizP*4);
+                break;
+            default: break;
+        }
+        /*
+        ctx.fillStype = `rgb(${0}, ${255}, ${0})`;
+        ctx.fillRect(Math.floor((boss.x-ScrX)*sizP), Math.floor((boss.y-ScrY)*sizP), 10, 10);
+        */
+        boss.aniT++;        
+    }
 
     //player movement
     if(hurtTime>0){
@@ -853,6 +936,31 @@ function draw(e) {
                 enemies[i].ky = dy/dst*Math.sqrt(swordDamage)*0.08;
             }
         }
+
+        if(bossActive){
+            //SDF... again
+            let tempX = boss.x - playerX;
+            let tempY = boss.y - playerY;
+
+            let temX = tempX*cosR-tempY*sinR;
+            tempY = tempX*sinR+tempY*cosR;
+            tempX = Math.abs(temX);
+            
+            let clamped = tempX * sinD + tempY * cosD;
+            clamped = (clamped > 0)? ((clamped < scaledSize)? clamped:scaledSize):0;
+                
+            if(Math.max(Math.sqrt(tempX*tempX+tempY*tempY)-scaledSize, length(tempX - sinD*clamped, tempY-cosD*clamped)*Math.sign(cosD*tempX-sinD*tempY)) <= 1.5){
+                //deal damage
+                boss.health-= swordDamage;
+                boss.hx = Math.random()*0.3-0.15;
+                boss.hy = Math.random()*0.3-0.15;
+
+                //vampirism
+                if(Math.random() < vampChance && playerHP < maxHealth){
+                    playerHP++;
+                }
+            }
+        }
     }
     
     //sword render
@@ -886,7 +994,6 @@ function draw(e) {
     ctx.fillStyle = `rgb(${229}, ${183}, ${98})`;
     ctx.fillRect(Math.floor(metric*0.05)+5, Math.floor(metric*0.05)+Math.floor(metric*0.04)+10, Math.floor(metric*0.05)+Math.floor(metric*0.45*(xp > nextLevel? 1:xp/nextLevel))-10, Math.floor(metric*0.02)-10);
     ctx.fillRect(Math.floor(metric*0.05)+Math.floor(metric*0.05)+Math.floor(metric*0.7*playerHP/maxHealth)-5, Math.floor(metric*0.05)+5, Math.floor(metric*0.7*(absorption + playerHP < maxHealth? absorption/maxHealth:1-playerHP/maxHealth)), Math.floor(metric*0.04)-10);
-
 
     ctx.drawImage(playerTileset, 0, 0, 32, 32, Math.floor(metric*-0.025), Math.floor(metric*-0.025), Math.floor(metric*0.2), Math.floor(metric*0.2));
 
