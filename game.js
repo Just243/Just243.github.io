@@ -446,7 +446,7 @@ function draw(e) {
 
     //boss spawning
     if(!bossActive){
-        if(spawnPhase > spawnPhase.list && Math.random() > 0.99){
+        if(spawnPhase > spawnList.length && Math.random() > 0.99){
             let angle = Math.random() * pi2;
             boss.x = playerX + Math.sin(angle)*Math.max(ctx.canvas.width, ctx.canvas.height);
             boss.y = playerY + Math.cos(angle)*Math.max(ctx.canvas.width, ctx.canvas.height);
