@@ -726,6 +726,7 @@ function draw(e) {
                             enemies[i] = enemies[enemies.length-1];
                             enemies.pop();
                             i--;
+                            continue;
                         }
 
                         checkEnemyTile(enemies[i], Math.floor(enemies[i].x-ax+0.5), Math.floor(enemies[i].y-ay+0.5), enemies[i].x-ax, enemies[i].y-ay);
