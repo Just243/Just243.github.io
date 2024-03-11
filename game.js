@@ -717,7 +717,7 @@ function draw(e) {
                         enemies[i].st--;
                     } else{
                         enemies[i].dir = distX < 0;
-                        if(dist > 2){
+                        if(dist > 1.5){
                             enemies[i].x += (distX/dist)*0.08;
                             enemies[i].y += (distY/dist)*0.08;
                         } else {
