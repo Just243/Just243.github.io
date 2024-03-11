@@ -13,7 +13,8 @@ slimeBallTileset = new Image(),
 fungantTileset = new Image(), 
 fungiantTileset = new Image(),
 devilTileset = new Image(),
-cacodaemonTileset = new Image();
+cacodaemonTileset = new Image(),
+explosionTileset = new Image();
 
 //font & UI's, in a slightly different format that's slightly worse
 const font = { NFlat: new Image(), NThick: new Image(), OFlat: new Image(), OThick: new Image() };
@@ -31,6 +32,7 @@ fungantTileset.src = "assets/enemies/fungant.png";
 fungiantTileset.src = "assets/enemies/fungiant.png";
 devilTileset.src = "assets/enemies/devil.png";
 cacodaemonTileset.src = "assets/enemies/cacodaemon.png";
+explosionTileset.src = "assets/particles/explosion.png"
 
 //load fonts & UI
 font.NFlat.src = "assets/font/normal_flat.png";
@@ -113,6 +115,9 @@ var threshold = 0.4;
 const grid = Array((sizX+1)*(sizY+1));
 const tiles = Array(sizX*sizY);
 
+//particles
+const particles = [];
+
 //enemies
 const enemies = [];
 const spawnList = [
@@ -129,7 +134,7 @@ const spawnList = [
 ];
 let spawnPhase = -1;
 const spawnBucket =[];
-let spawnDelay = 100;
+let spawnDelay = 0;
 
 //boss
 const boss = { hp:150, damage:10, atkSpeed:30, atkCooldown:0, x:100, y:100, vx:0, vy:0, hx:0, hy:0, dashCooldown:0, state:"idle", aniT:0, dir:1};
@@ -325,7 +330,7 @@ function addEnemy(x, y, type){
             enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:20, damage:1, attackCd:100, attackSpeed:160, xp:6, col:true, drag:0.6 });
             break;
         case "fungant":
-            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:1, damage:1, attackCd:0, attackSpeed:20, xp:0, col:true, drag:0.95 });
+            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:1, damage:4, attackCd:0, attackSpeed:20, xp:2, col:true, drag:0.95 });
             break;
         case "devil":
             enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:12, damage:6, attackCd:0, attackSpeed:20, xp:16, col:true, drag:0.9 });
@@ -410,34 +415,34 @@ function draw(e) {
 
     //enemy spawning
     if(spawnDelay < 0){
-        spawnDelay = Math.floor(Math.random()*60+(30000/(dt+1))+30);
+        spawnDelay = Math.floor(60*Math.random()+100000/(dt+256)+20);
 
         if(spawnBucket.length == 0){
-            spawnDelay = 1800;
+            spawnDelay = 600;
             spawnPhase++;
             for(const element of spawnList[Math.min(spawnPhase, spawnList.length-1)]){
                 for(let i = 0; i < element.count; i++){
                     spawnBucket.push(element.type);
                 }
             }
-        }
+        } else {
+             //weighted selection from the spawn bucket
+            let i = Math.floor(Math.random()*spawnBucket.length);
+            let type = spawnBucket[i];
+            spawnBucket[i] = spawnBucket[spawnBucket.length-1];
+            spawnBucket.pop();
 
-        //weighted selection from the spawn bucket
-        let i = Math.floor(Math.random()*spawnBucket.length);
-        let type = spawnBucket[i];
-        spawnBucket[i] = spawnBucket[spawnBucket.length-1];
-        spawnBucket.pop();
-
-        for(let spawnCount = Math.ceil(Math.random()*4); spawnCount > 0; spawnCount--){
-            for(let attempts = 0; attempts < 10; attempts++){ //10 attempts to spawn
-                let randDir = Math.random()*Math.PI*2;
-                let randDist = Math.random()*5+1;
-                let testX = playerX + Math.sin(randDir)*randDist;
-                let testY = playerY + Math.cos(randDir)*randDist;
-                if(testX > ax && testX-ax < sizX && testY > ay && testY-ay < sizY){
-                    if(tiles[Math.floor(testX-ax+0.5)+Math.floor(testY-ay+0.5)*sizX] === 15){
-                        addEnemy(testX, testY, type);
-                        break;
+            for(let spawnCount = Math.ceil(Math.random()*4); spawnCount > 0; spawnCount--){
+                for(let attempts = 0; attempts < 10; attempts++){ //10 attempts to spawn
+                    let randDir = Math.random()*Math.PI*2;
+                    let randDist = Math.random()*5+1;
+                    let testX = playerX + Math.sin(randDir)*randDist;
+                    let testY = playerY + Math.cos(randDir)*randDist;
+                    if(testX > ax && testX-ax < sizX && testY > ay && testY-ay < sizY){
+                        if(tiles[Math.floor(testX-ax+0.5)+Math.floor(testY-ay+0.5)*sizX] === 15){
+                            addEnemy(testX, testY, type);
+                            break;
+                        }
                     }
                 }
             }
@@ -712,11 +717,15 @@ function draw(e) {
                         enemies[i].st--;
                     } else{
                         enemies[i].dir = distX < 0;
-                        if(dist > 0.6){
+                        if(dist > 2){
                             enemies[i].x += (distX/dist)*0.08;
                             enemies[i].y += (distY/dist)*0.08;
                         } else {
-                            //explode
+                            particles.push({type:"explosion", x:enemies[i].x, y:enemies[i].y, timer:0, tMax:26});
+                            plsDoDamage(i, 0.35, distX, distY, dist);
+                            enemies[i] = enemies[enemies.length-1];
+                            enemies.pop();
+                            i--;
                         }
 
                         checkEnemyTile(enemies[i], Math.floor(enemies[i].x-ax+0.5), Math.floor(enemies[i].y-ay+0.5), enemies[i].x-ax, enemies[i].y-ay);
@@ -977,6 +986,23 @@ function draw(e) {
         ctx.drawImage(swordTileset, Math.floor(4-swordCooldown*4/Math.floor(swordAttackSpeed))<<5, 64, 32, 32, -Math.floor(sizP*swordSize), -scaledSize, scaledSize, scaledSize);
     }
     ctx.restore();
+
+    //particles
+    for(let i = 0; i < particles.length; i++){
+        switch(particles[i].type){
+            case "explosion":
+                ctx.drawImage(explosionTileset, Math.floor((particles[i].timer)/2)*32, 0, 32, 32, Math.floor((particles[i].x-ScrX-1)*sizP), Math.floor((particles[i].y-ScrY-1)*sizP), sizP*2, sizP*2);
+                break;
+            default: break;
+        }
+
+        particles[i].timer++;
+        if(particles[i].timer > particles[i].tMax){
+            particles[i] = particles[particles.length - 1];
+            particles.pop();
+            i--;
+        }
+    }
 
     //UI
     //health & xp bar
