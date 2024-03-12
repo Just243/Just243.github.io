@@ -163,7 +163,7 @@ const upgrades = [
     {name:"Poisoning Blade"}, //not used
     {name:"Thunderous Blade"}, //not used
     {name:"Sweeping Grace", text:["Increases attack range by ", "x"], statMin:0.3, statMax:1, digitMult:100},
-    {name:"Slicing Grace", text:["Decreases attack delay by ", " ticks"], statMin:1, statMax:2, digitMult:1},
+    {name:"Slicing Grace", text:["Decreases attack delay by ", " ticks"], statMin:1, statMax:4, digitMult:1},
     {name:"Powerful Punch", text:["Increases attack damage by "], statMin:0.5, statMax:4, digitMult:10},
     {name:"Ferocious Bite", text:["Increases double-hit chance by ", "x"], statMin:0.1, statMax:0.3, digitMult:1000},
     {name:"Growth", text:["Increases max health by ", " health"], statMin:3, statMax:8, digitMult:1},
@@ -807,27 +807,38 @@ function draw(e) {
             case "burp":
                 break;
             case "death":
+                if(boss.aniT > 3199){
+                    bossActive = false;
+                }
+                xp += 100;o
                 break;
             default: break;
         }
 
-        boss.atkCooldown--;
-        if(d < 2 && boss.atkCooldown < 0){
-            CamShakeX += (Math.random()-0.5)*3;
-            CamShakeY += (Math.random()-0.5)*3;
-        
-            if(absorption > 0){
-                absorption -= boss.damage;
-                playerHP += Math.min(absorption, 0);
-            } else {
-                playerHP -= boss.damage;
-            }
+        if(boss.health <= 0){
+            boss.state = "death";
+            boss.aniT = 0;
+        }
+
+        if(boss.state != "death"){
+            boss.atkCooldown--;
+            if(d < 2 && boss.atkCooldown < 0){
+                CamShakeX += (Math.random()-0.5)*3;
+                CamShakeY += (Math.random()-0.5)*3;
             
-            boss.atkCooldown = boss.atkSpeed;
-            hurtDamage = boss.damage;
-            hurtTime = 24;
-            knockX = -0.4*dx/d;                                    
-            knockY = -0.4*dy/d;
+                if(absorption > 0){
+                    absorption -= boss.damage;
+                    playerHP += Math.min(absorption, 0);
+                } else {
+                    playerHP -= boss.damage;
+                }
+                
+                boss.atkCooldown = boss.atkSpeed;
+                hurtDamage = boss.damage;
+                hurtTime = 24;
+                knockX = -0.4*dx/d;                                    
+                knockY = -0.4*dy/d;
+            }
         }
 
         boss.hx *= -0.9;
@@ -841,20 +852,16 @@ function draw(e) {
                 }
                 break;
             case "dash":
-                ctx.drawImage(cacodaemonTileset, (boss.aniT%6)*64, 64+boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2)*sizP), Math.floor((boss.y-ScrY-2)*sizP), sizP*4, sizP*4);
+                ctx.drawImage(cacodaemonTileset, (Math.floor(boss.aniT/4)%6)*64, 64+boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2)*sizP), Math.floor((boss.y-ScrY-2)*sizP), sizP*4, sizP*4);
                 break;
             case "burp":
-                ctx.drawImage(cacodaemonTileset, (boss.aniT%4)*64, 128+boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2)*sizP), Math.floor((boss.y-ScrY-2)*sizP), sizP*4, sizP*4);
+                ctx.drawImage(cacodaemonTileset, (Math.floor(boss.aniT/10)%4)*64, 128+boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2)*sizP), Math.floor((boss.y-ScrY-2)*sizP), sizP*4, sizP*4);
                 break;
             case "death":
-                ctx.drawImage(cacodaemonTileset, (boss.aniT%8)*64, 192+boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2)*sizP), Math.floor((boss.y-ScrY-2)*sizP), sizP*4, sizP*4);
+                ctx.drawImage(cacodaemonTileset, (Math.floor(boss.aniT/20)%8)*64, 192+boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2)*sizP), Math.floor((boss.y-ScrY-2)*sizP), sizP*4, sizP*4);
                 break;
             default: break;
         }
-        /*
-        ctx.fillStype = `rgb(${0}, ${255}, ${0})`;
-        ctx.fillRect(Math.floor((boss.x-ScrX)*sizP), Math.floor((boss.y-ScrY)*sizP), 10, 10);
-        */
         boss.aniT++;        
     }
 
@@ -987,7 +994,7 @@ function draw(e) {
         ctx.drawImage(swordTileset, Math.floor(4-swordCooldown*4/Math.floor(swordAttackSpeed))<<5, 64, 32, 32, -Math.floor(sizP*swordSize), -scaledSize, scaledSize, scaledSize);
     }
     ctx.restore();
-
+3
     //particles
     for(let i = 0; i < particles.length; i++){
         switch(particles[i].type){
