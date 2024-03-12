@@ -51,11 +51,10 @@ const ctx = canvas.getContext("2d", {alpha: false});
 ctx.canvas.width = window.innerWidth;
 ctx.canvas.height = window.innerHeight;
 ctx.imageSmoothingEnabled = false;
-ctx.textBaseline = "top";
 
 //event listeners
 document.addEventListener("keydown", (e) => {
-    switch (e.key){
+    switch (e.key.toLowerCase()){
         case "w": keys[0] = 1; break; //up
         case "s": keys[1] = 1; break; //down
         case "a": keys[2] = 1; break; //left
@@ -71,11 +70,12 @@ document.addEventListener("keydown", (e) => {
                 UI.openTimer = 30;
             }
             break;
+        case " ": if(!inUI) md = true; break;
         default: break;
     }
 });
 document.addEventListener("keyup", (e) => {
-    switch (e.key){
+    switch (e.key.toLowerCase()){
         case "w": keys[0] = 0; break; //up
         case "s": keys[1] = 0; break; //down
         case "a": keys[2] = 0; break; //left
@@ -368,8 +368,8 @@ function draw(e) {
     //there's probably a better way to do this but IDGAF
     if(!inUI){ //unreadable code go brr
     //camera movememnt
-    ScrX = Math.max(ScrX - (ScrX-(playerX-ctx.canvas.width/(sizP<<1)))/16, 0);
-    ScrY = Math.max(ScrY - (ScrY-(playerY-ctx.canvas.height/(sizP<<1)))/16, 0);
+    ScrX = Math.max(ScrX - (ScrX-(playerX-ctx.canvas.width/(sizP<<1)))/16, -CamShakeX+0.01);
+    ScrY = Math.max(ScrY - (ScrY-(playerY-ctx.canvas.height/(sizP<<1)))/16, -CamShakeX+0.01);
     ScrX += CamShakeX;
     ScrY += CamShakeY;
 
@@ -1024,6 +1024,14 @@ function draw(e) {
 
     ctx.drawImage(playerTileset, 0, 0, 32, 32, Math.floor(metric*-0.025), Math.floor(metric*-0.025), Math.floor(metric*0.2), Math.floor(metric*0.2));
 
+    ctx.fillStyle = `rgb(${0}, ${0}, ${0})`;
+    ctx.textBaseline = "top";
+    ctx.textAlign = "right";
+    ctx.font = "80px Courier";
+    ctx.fillText(Math.floor(dt/3600) + ":" + (Math.floor(dt/60)%60 < 10? "0":"") + Math.floor(dt/60)%60, Math.floor(ctx.canvas.width*0.975), Math.floor(ctx.canvas.height*0.025));
+    ctx.font = "40px Courier";
+    ctx.fillText("Wave: " + (spawnPhase + 1), Math.floor(ctx.canvas.width*0.975), Math.floor(ctx.canvas.height*0.025)+80);
+
     //player death cuz idk where else to put it
     if(playerHP < 0){
         inUI = true;
@@ -1090,6 +1098,8 @@ function draw(e) {
                 }
                 break;
             case "upgrade":
+                ctx.textBaseline = "top";
+                ctx.textAlign = "left";
                 let iconSize = Math.floor(metric*0.125)*2, iconsY = Math.floor((ctx.canvas.height-iconSize)*0.5);
                 if(UI.openTimer > 80) {
                     ctx.drawImage(UIArt.icons, 48, 72, 24, 24, Math.floor(ctx.canvas.width*0.2-iconSize*0.5), iconsY, iconSize, iconSize);
