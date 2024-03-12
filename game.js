@@ -149,7 +149,7 @@ var spawnDelay = 0;
 
 //boss
 const boss = { health:150, damage:10, atkSpeed:30, atkCooldown:0, x:100, y:100, vx:0, vy:0, hx:0, hy:0, dashCooldown:0, state:"idle", aniT:0, dir:1};
-var bossActive = true;
+var bossActive = false;
 var bossSpawnCooldown = 0;
 
 //player variables
@@ -463,7 +463,6 @@ function draw(e) {
 
     //boss spawning
     if(!bossActive){
-        console.log(bossSpawnCooldown)
         bossSpawnCooldown--;
         if(spawnPhase > spawnList.length && bossSpawnCooldown < 0){
             let angle = Math.random() * pi2;
