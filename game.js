@@ -70,6 +70,17 @@ document.addEventListener("keydown", (e) => {
                 UI.openTimer = 30;
             }
             break;
+        case "escape": //pause
+            if(inUI) {
+                if(UI.type == "pause" && UI.openTimer <= 0 && UI.closeTimer <= 0) {
+                    UI.closeTimer = 30;
+                }
+            } else {
+                inUI = true;
+                UI.type = "pause";
+                UI.openTimer = 30;
+            }
+            break;
         case " ": if(!inUI) md = true; break;
         default: break;
     }
