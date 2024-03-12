@@ -149,7 +149,7 @@ let spawnDelay = 0;
 
 //boss
 const boss = { health:150, damage:10, atkSpeed:30, atkCooldown:0, x:100, y:100, vx:0, vy:0, hx:0, hy:0, dashCooldown:0, state:"idle", aniT:0, dir:1};
-let bossActive = true;
+let bossActive = false;
 
 //player variables
 var maxHealth = 25;
