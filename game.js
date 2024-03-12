@@ -810,7 +810,7 @@ function draw(e) {
                 if(boss.aniT > 3199){
                     bossActive = false;
                 }
-                xp += 100;o
+                xp += 100;
                 break;
             default: break;
         }
