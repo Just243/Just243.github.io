@@ -143,13 +143,14 @@ const spawnList = [
     [{type:"skeleton", count:4}],
     [{type:"devil", count:8}]
 ];
-let spawnPhase = -1;
+var spawnPhase = -1;
 const spawnBucket =[];
-let spawnDelay = 0;
+var spawnDelay = 0;
 
 //boss
 const boss = { health:150, damage:10, atkSpeed:30, atkCooldown:0, x:100, y:100, vx:0, vy:0, hx:0, hy:0, dashCooldown:0, state:"idle", aniT:0, dir:1};
-let bossActive = false;
+var bossActive = false;
+let bossSpawnCooldown = 0;
 
 //player variables
 var maxHealth = 25;
@@ -462,7 +463,8 @@ function draw(e) {
 
     //boss spawning
     if(!bossActive){
-        if(spawnPhase > spawnList.length && Math.random() > 0.99){
+        bossSpawnCooldown--;
+        if(spawnPhase > spawnList.length && bossSpawnCooldown < 0){
             let angle = Math.random() * pi2;
             boss.x = playerX + Math.sin(angle)*Math.max(ctx.canvas.width, ctx.canvas.height);
             boss.y = playerY + Math.cos(angle)*Math.max(ctx.canvas.width, ctx.canvas.height);
@@ -818,20 +820,27 @@ function draw(e) {
             case "burp":
                 break;
             case "death":
-                if(boss.aniT > 3199){
-                    bossActive = false;
+                if(boss.aniT%10 == 0){
+                    particles.push({type:"explosion", x:boss.x+1.5*Math.random()-0.75, y:boss.y+1.5*Math.random()-0.25, timer:0, tMax:26});
                 }
-                xp += 100;
+                if(boss.aniT >= 159){
+                    for(let i = 0; i < 5; i++){
+                        particles.push({type:"explosion", x:boss.x+1.5*Math.random()-0.75, y:boss.y+1.5*Math.random()-0.25, timer:0, tMax:26});
+                    }
+                    bossActive = false;
+                    xp += 150;
+                    bossSpawnCooldown = 3600;
+                }
                 break;
             default: break;
         }
 
-        if(boss.health <= 0){
-            boss.state = "death";
-            boss.aniT = 0;
-        }
-
         if(boss.state != "death"){
+            if(boss.health <= 0){
+                boss.state = "death";
+                boss.aniT = 0;
+            }
+
             boss.atkCooldown--;
             if(d < 2 && boss.atkCooldown < 0){
                 CamShakeX += (Math.random()-0.5)*3;
@@ -869,7 +878,7 @@ function draw(e) {
                 ctx.drawImage(cacodaemonTileset, (Math.floor(boss.aniT/10)%4)*64, 128+boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2)*sizP), Math.floor((boss.y-ScrY-2)*sizP), sizP*4, sizP*4);
                 break;
             case "death":
-                ctx.drawImage(cacodaemonTileset, (Math.floor(boss.aniT/20)%8)*64, 192+boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2)*sizP), Math.floor((boss.y-ScrY-2)*sizP), sizP*4, sizP*4);
+                ctx.drawImage(cacodaemonTileset, (Math.floor(boss.aniT/20)%8)*64, 192+boss.dir*256, 64, 64, Math.floor((boss.x-ScrX-2+(Math.random()-0.5)*0.3)*sizP), Math.floor((boss.y-ScrY-2+(Math.random()-0.5)*0.3)*sizP), sizP*4, sizP*4);
                 break;
             default: break;
         }
