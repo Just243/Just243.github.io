@@ -149,8 +149,8 @@ var spawnDelay = 0;
 
 //boss
 const boss = { health:150, damage:10, atkSpeed:30, atkCooldown:0, x:100, y:100, vx:0, vy:0, hx:0, hy:0, dashCooldown:0, state:"idle", aniT:0, dir:1};
-var bossActive = false;
-let bossSpawnCooldown = 0;
+var bossActive = true;
+var bossSpawnCooldown = 0;
 
 //player variables
 var maxHealth = 25;
@@ -319,7 +319,7 @@ function addEnemy(x, y, type){
     /* x = x position, y = y position, kx = x knockback, ky = y knockback
      * t = type, st = spawn timer, dir = direction (1 or 0)
      * hurtT = hurt timer, deathT = death animation timer, health = health
-     * damage = attack damage, attackCd = attack cooldown, attackSpeed = interval between attacks
+     * damage = attack damage, attackCd = attack cooldown, attackSpeed = interval between attacks, movSpeed = movement speed
      * xp = xp granted on kill, col = collision, drag = friction 
     */
 
@@ -327,25 +327,25 @@ function addEnemy(x, y, type){
 
     switch(type){
         case "ghost":
-            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:4, damage:2, attackCd:0, attackSpeed:30, xp:1, col:false, drag:0.9 });
+            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:4, damage:2, attackCd:0, attackSpeed:30, movSpeed:0.04, xp:1, col:false, drag:0.9 });
             break;
         case "skeleton":
-            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:8, damage:1, attackCd:0, attackSpeed:20, xp:1, col:true, drag:0.95 });
+            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:8, damage:1, attackCd:0, attackSpeed:20, movSpeed:0.06, xp:1, col:true, drag:0.95 });
             break;
         case "slime": 
-            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:24, damage:6, attackCd:200, attackSpeed:100, xp:4, col:true, drag:0.9 });
+            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:24, damage:6, attackCd:200, attackSpeed:100, movSpeed:0.03, xp:4, col:true, drag:0.9 });
             break;
         case "slimeBall":
-            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:1, damage:3, attackCd:0, attackSpeed:20, xp:1, col:true, drag:0.8 });
+            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:1, damage:3, attackCd:0, attackSpeed:20, movSpeed:0.06, xp:1, col:true, drag:0.8 });
             break;
         case "fungiant":
-            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:20, damage:1, attackCd:100, attackSpeed:160, xp:6, col:true, drag:0.6 });
+            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:20, damage:1, attackCd:100, attackSpeed:160, movSpeed:0.02, xp:6, col:true, drag:0.6 });
             break;
         case "fungant":
-            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:1, damage:4, attackCd:0, attackSpeed:20, xp:2, col:true, drag:0.95 });
+            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:1, damage:4, attackCd:0, attackSpeed:20, movSpeed:0.08, xp:2, col:true, drag:0.95 });
             break;
         case "devil":
-            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:12, damage:6, attackCd:0, attackSpeed:20, xp:16, col:true, drag:0.9 });
+            enemies.push({ x:x, y:y, kx:0, ky:0, t:type, st:60, dir:1, hurtT:0, deathT:0, health:12, damage:6, attackCd:0, attackSpeed:20, movSpeed:0.03, xp:16, col:true, drag:0.9 });
         default: break;
     }
 }
@@ -463,11 +463,11 @@ function draw(e) {
 
     //boss spawning
     if(!bossActive){
+        console.log(bossSpawnCooldown)
         bossSpawnCooldown--;
         if(spawnPhase > spawnList.length && bossSpawnCooldown < 0){
             let angle = Math.random() * pi2;
-            boss.x = playerX + Math.sin(angle)*Math.max(ctx.canvas.width, ctx.canvas.height);
-            boss.y = playerY + Math.cos(angle)*Math.max(ctx.canvas.width, ctx.canvas.height);
+            boss = { health:150, damage:10, atkSpeed:30, atkCooldown:0, x:playerX + Math.sin(angle)*Math.max(ctx.canvas.width, ctx.canvas.height), y:playerY + Math.cos(angle)*Math.max(ctx.canvas.width, ctx.canvas.height), vx:0, vy:0, hx:0, hy:0, dashCooldown:0, state:"idle", aniT:0, dir:1};
             bossActive = true;
         }
     }
@@ -612,8 +612,8 @@ function draw(e) {
                     } else {
                         enemies[i].dir = distX < 0;
                         if(dist > 0.6){
-                            enemies[i].x += (distX/dist)*0.04;
-                            enemies[i].y += (distY/dist)*0.04;
+                            enemies[i].x += (distX/dist)*enemies[i].movSpeed;
+                            enemies[i].y += (distY/dist)*enemies[i].movSpeed;
                         } else if(enemies[i].attackCd < 0){
                             plsDoDamage(i, 0.2, distX, distY, dist);
                         }
@@ -628,8 +628,8 @@ function draw(e) {
                     } else{
                         enemies[i].dir = distX < 0;
                         if(dist > 0.6){
-                            enemies[i].x += (distX/dist)*0.06;
-                            enemies[i].y += (distY/dist)*0.06;
+                            enemies[i].x += (distX/dist)*enemies[i].movSpeed;
+                            enemies[i].y += (distY/dist)*enemies[i].movSpeed;
                         } else if(enemies[i].attackCd < 0){
                             plsDoDamage(i, 0.2, distX, distY, dist);
                         }
@@ -648,10 +648,10 @@ function draw(e) {
                         enemies[i].st--;
                     } else{
                         enemies[i].dir = distX < 0;
-                        if(dist > 0.6){
+                        if(dist > 2){
                             if(dist > 6){
-                                enemies[i].x += (distX/dist)*0.03;
-                                enemies[i].y += (distY/dist)*0.03;
+                                enemies[i].x += (distX/dist)*enemies[i].movSpeed;
+                                enemies[i].y += (distY/dist)*enemies[i].movSpeed;
                             } else {
                                 if(enemies[i].attackCd < 0){
                                     addEnemy(enemies[i].x+Math.random()-0.5, enemies[i].y+Math.random()-0.5, "slimeBall");
@@ -659,8 +659,9 @@ function draw(e) {
                                     enemies[i].health--;
                                 }
                             }
-                        } else if(enemies[i].attackCd < 0){
-                            plsDoDamage(i, 0.4, distX, distY, dist);
+                        } else {
+                            enemies[i].x -= (distX/dist)*enemies[i].movSpeed;
+                            enemies[i].y -= (distY/dist)*enemies[i].movSpeed;
                         }
 
                         checkEnemyTile(enemies[i], Math.floor(enemies[i].x-ax+0.5), Math.floor(enemies[i].y-ay+0.5), enemies[i].x-ax, enemies[i].y-ay);
@@ -679,11 +680,11 @@ function draw(e) {
                         enemies[i].dir = distX < 0;
                         if(dist > 0.6){
                             if(dist > 2){
-                                enemies[i].x += (distX/dist)*0.06;
-                                enemies[i].y += (distY/dist)*0.06;
+                                enemies[i].x += (distX/dist)*enemies[i].movSpeed;
+                                enemies[i].y += (distY/dist)*enemies[i].movSpeed;
                             } else {
-                                enemies[i].x += (distX/dist)*0.04;
-                                enemies[i].y += (distY/dist)*0.04;
+                                enemies[i].x += (distX/dist)*enemies[i].movSpeed*0.66;
+                                enemies[i].y += (distY/dist)*enemies[i].movSpeed*0.66;
                             }
                         } else if(enemies[i].attackCd < 0){
                             plsDoDamage(i, 0.15, distX, distY, dist);
@@ -705,8 +706,8 @@ function draw(e) {
                         enemies[i].dir = distX < 0;
                         if(dist > 0.6){
                             if(dist > 7){
-                                enemies[i].x += (distX/dist)*0.02;
-                                enemies[i].y += (distY/dist)*0.02;
+                                enemies[i].x += (distX/dist)*enemies[i].movSpeed;
+                                enemies[i].y += (distY/dist)*enemies[i].movSpeed;
                             } else {
                                 if(enemies[i].attackCd < 0){
                                     addEnemy(enemies[i].x+Math.random()-0.5, enemies[i].y+Math.random()-0.5, "fungant");
@@ -731,8 +732,8 @@ function draw(e) {
                     } else{
                         enemies[i].dir = distX < 0;
                         if(dist > 1.5){
-                            enemies[i].x += (distX/dist)*0.08;
-                            enemies[i].y += (distY/dist)*0.08;
+                            enemies[i].x += (distX/dist)*enemies[i].movSpeed;
+                            enemies[i].y += (distY/dist)*enemies[i].movSpeed;
                         } else {
                             particles.push({type:"explosion", x:enemies[i].x, y:enemies[i].y, timer:0, tMax:26});
                             plsDoDamage(i, 0.35, distX, distY, dist);
@@ -756,15 +757,15 @@ function draw(e) {
                         enemies[i].st--;
                     } else{
                         enemies[i].dir = distX < 0;
-                        if(dist > 3){
-                            enemies[i].x += (distX/dist)*0.03;
-                            enemies[i].y += (distY/dist)*0.03;
+                        if(dist > 3.5){
+                            enemies[i].x += (distX/dist)*enemies[i].movSpeed;
+                            enemies[i].y += (distY/dist)*enemies[i].movSpeed;
                         } else {
                             if(dist < 0.8){
                                 plsDoDamage(i, 0.4, distX, distY, dist);
                             } else {
-                                enemies[i].x += (distX/dist)*0.12;
-                                enemies[i].y += (distY/dist)*0.12;
+                                enemies[i].x += (distX/dist)*enemies[i].movSpeed*4;
+                                enemies[i].y += (distY/dist)*enemies[i].movSpeed*4;
                             }
                         }
 
